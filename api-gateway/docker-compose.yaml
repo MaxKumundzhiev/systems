@@ -11,6 +11,18 @@ services:
     restart: always
     networks:
       - microservices
+  users:
+    container_name: users-service
+    build:
+      context: ./users
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - ENVIRONMENT=dev
+    restart: always
+    networks:
+      - microservices
 
 networks:
   microservices:

@@ -17,10 +17,10 @@ async def health():
     return {"status": "Users service healthy"}
 
 
-@app.get("/users/{id}")
-async def user(id: str):
+@app.get("/users/{user_id}")
+async def user(user_id: str):
     return {
-        "id": id,
+        "id": user_id,
         "name": "Max",
         "surname": "Doe",
         "email": "foo@gmail.com"

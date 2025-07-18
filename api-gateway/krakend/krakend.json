@@ -1,0 +1,32 @@
+{
+    "version": 3,
+    "name": "api-gateway",
+    "port": 8000,
+    "cahce_ttl": "300s",
+    "endpoints": [
+        {
+            "endpoint": "/discovery/health/",
+            "method": "GET",
+            "backend": [
+                {
+                    "url_pattern": "/health",
+                    "host": [
+                        "http://delivery:8001"
+                    ]
+                }
+            ]
+        },
+        {
+            "endpoint": "/users/health/",
+            "method": "GET",
+            "backend": [
+                {
+                    "url_pattern": "/health",
+                    "host": [
+                        "http://users:8002"
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -1,5 +1,6 @@
 services:
   delivery:
+    image: delivery-service:latest
     container_name: delivery-service
     build:
       context: ./delivery
@@ -12,12 +13,26 @@ services:
     networks:
       - microservices
   users:
+    image: users-service:latest
     container_name: users-service
     build:
       context: ./users
       dockerfile: Dockerfile
     ports:
       - "8002:8002"
+    environment:
+      - ENVIRONMENT=dev
+    restart: always
+    networks:
+      - microservices
+  gateway:
+    image: gateway-service:latest
+    container_name: gateway-service
+    build:
+      context: ./krakend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
     environment:
       - ENVIRONMENT=dev
     restart: always

@@ -1,0 +1,17 @@
+services:
+  delivery:
+    container_name: delivery-service
+    build:
+      context: ./delivery
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - ENVIRONMENT=dev
+    restart: always
+    networks:
+      - microservices
+
+networks:
+  microservices:
+    external: true

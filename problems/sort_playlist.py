@@ -35,7 +35,7 @@ class Playlist:
 
     def __sort_asc(self):
         sorted = []
-        for idx in range(len(self.frequencies)):
+        for _ in range(len(self.frequencies)):
             smallest = self.__find_smallest(self.frequencies)
             sorted.append(self.frequencies.pop(smallest))
         self.frequencies = sorted

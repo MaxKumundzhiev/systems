@@ -18,8 +18,8 @@ class LinkedList:
             self.head = self.tail = new
         else:
             old = self.tail
-            old.next = new
-            new.prev = old
+            old.next = new # type: ignore
+            new.prev = old # type: ignore
             self.tail = new
         return
     

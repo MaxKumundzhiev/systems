@@ -8,7 +8,7 @@
 - 4th chapter conquer and divide + quick sort   (done)
 
 
-9th Nov
+9th Nov + 10th Nov
 - 5th chapter (hash table)
 - 6 problems from algocode (hash table)
 - revamp knowledge (trees + traversals)

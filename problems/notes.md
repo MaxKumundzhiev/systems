@@ -9,11 +9,33 @@
 
 
 9th Nov + 10th Nov
-- 5th chapter (hash table)
-- 6 problems from algocode (hash table)
-- revamp knowledge (trees + traversals)
-- 6th chapter (BFS)
-- k8s intro + creating and running containers
+- 5th chapter (hash table)                              (done)
+    - hashtable from scratch (array + hash function)    (done)
+    - LRU cache (OrderedDict)                           (done)
+    - Items catalog (search + put API)                  (done)
+- 6 problems from algocode and leetcode (hash table)
+    - duplicates                                        (done)     
+    - 2Sum                                              (done)
+    - Symmetry on Y axe                                 (done)
+    - Isomorphic strings                                (done с подглядыванием)  (перенос на 11 ноября)
+    - Tourist route                                     (done с подглядыванием)  (перенос на 11 ноября)
+- k8s intro + creating and running containers           (перенос на 11 ноября)
 
-- interview     (30 min + 30 min = 1h)
-- call for AI   (30 min)
+
+11th Nov
+- k8s intro                                             (done) (перенос на 12 ноября)
+- revamp knowledge (trees + traversals)                 (перенос на 12 ноября)
+- 6th chapter (BFS)                                     (перенос на 12 ноября)
+
+
+12th Nov
+- k8s (chapter 2) creating and running containers       (current)
+    - dockerfiles
+    - optimize image size
+    - security
+    - multistage builds
+    - storing in remote
+    - container runtime
+    - limiting resourses
+- trees (algocode)
+- binary search (algocode)

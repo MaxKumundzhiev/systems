@@ -29,13 +29,21 @@
 
 
 12th Nov
-- k8s (chapter 2) creating and running containers       (current)
-    - dockerfiles
-    - optimize image size
-    - security
-    - multistage builds
-    - storing in remote
-    - container runtime
-    - limiting resourses
+- k8s (chapter 2) creating and running containers       (done)
+    - dockerfiles                                       (done)
+    - optimize docker container image size              (done)
+        - In general, you want to order your layers from least likely to change to most likely to change in order to optimize the image size for pushing and pulling. 
+        - https://devopscube.com/reduce-docker-image-size/
+    - security                                          (done)
+    - multistage builds                                 (done)
+        - main idea is to separate "build" and "run | deployment" stages due to nature of how docker works
+        - multi stage approach uses "build" image for "deployment"
+        - https://github.com/aivor7ex/docker-multistage-practice/tree/main
+    - storing in remote                                 (done)
+    - container runtime                                 (done)
+        - Container Runtime Interface (CRI) определяет API между Kubernetes и Container Runtime (средой выполнения контейнеров).
+        - https://habr.com/ru/companies/domclick/articles/566224/
+    - limiting resourses                                (done)
+
 - trees (algocode)
 - binary search (algocode)

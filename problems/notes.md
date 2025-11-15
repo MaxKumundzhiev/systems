@@ -51,4 +51,5 @@
 
 
 15th Nov
-- 6th chapter (BFS)                                     ()
+- 6th chapter (BFS)                                     (done)
+- 7th chapter (Dekstra)                                 (...)

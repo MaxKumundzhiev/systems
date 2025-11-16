@@ -45,11 +45,21 @@
         - https://habr.com/ru/companies/domclick/articles/566224/
     - limiting resourses                                (done)
 
-- trees (algocode)
-- binary search (algocode)
-
-
+- trees (algocode)                                      (postponeds)
+- binary search (algocode)                              (postponeds)
 
 15th Nov
 - 6th chapter (BFS)                                     (done)
-- 7th chapter (Dekstra)                                 (...)
+- 7th chapter (Dekstra)                                 (done)
+
+
+16th Nov
+- chapter 3 (deploying k8s cluster)
+- message brokers
+    - create 2 microservices which communicate through message brokers
+
+- 8th chapter (greedy algorithms)                       (WIP)
+- binary search (2 problems)        
+- graphs (bfs) (3 problems)
+
+

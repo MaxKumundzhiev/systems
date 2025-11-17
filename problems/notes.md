@@ -44,7 +44,6 @@
         - Container Runtime Interface (CRI) определяет API между Kubernetes и Container Runtime (средой выполнения контейнеров).
         - https://habr.com/ru/companies/domclick/articles/566224/
     - limiting resourses                                (done)
-
 - trees (algocode)                                      (postponeds)
 - binary search (algocode)                              (postponeds)
 
@@ -57,12 +56,24 @@
 - chapter 3 (deploying k8s cluster)                     (done)
 - deploy sample app to k8s cluster                      (done)
     https://dev.to/bravinsimiyu/how-to-dockerize-and-deploy-a-fast-api-application-to-kubernetes-cluster-35a9
-- chapter 4 (kubectl commands)                          (wip)
+- chapter 4 (kubectl commands)                          (done)
+- 8th chapter (greedy algorithms)                       (postponed)
+- binary search (2 problems)                            (postponed)
+- graphs (bfs) (3 problems)                             (postponed)
 
-- message brokers
-    - create 2 microservices which communicate through message brokers
 
-- 8th chapter (greedy algorithms)                       (WIP)
-- binary search (2 problems)        
-- graphs (bfs) (3 problems)
+17th November
+- binary search (2 problems)                            ()
+- graphs (bfs) (3 problems)                             ()
+- chapter 5 (Pods)                                      ()
+- 8th chapter (greedy algorithms)                       ()
+- backend service + database
+    use case: user generates events on client side and client sends them to backend
+              whereas backend writes them to queue and consumer at some point reads from queue and write to storage (click house)
+    tech stack:
+        backend: fastapi (producer (to queue) + consumer (from queue))
+        queue:  kafka
+        storage: clickhouse
+        running: k8s
+
 

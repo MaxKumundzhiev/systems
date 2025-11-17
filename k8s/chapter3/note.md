@@ -26,4 +26,18 @@ Namespaces - k8s uses namespaces to organize objects in cluster. You can think o
 # kubectl (api to communicate with k8s) commands
 ```bash
 $ kubectl get <resource-name> <obj-name> - If you want to get a specific resource
+
+$ kubectl apply -f <file>.yaml (or <file>.json) - declarative management
+    Purpose: Used to create, update, or modify resources to match a desired state defined in a configuration file.
+    
+    Behavior: kubectl apply reads the configuration file and determines what changes are needed to bring the live object in the cluster to the desired state. It can create a resource if it doesn't exist, or update it if it does. It also attempts to preserve any changes made directly to the live object (e.g., scaling a deployment manually).
+
+    Use Cases: Recommended for managing the lifecycle of applications, applying configuration changes, and integrating with version control systems. It's the preferred method for maintaining the desired state of your cluster.
+
+$ kubectl create -f <file>.yaml (or <file>.json) - imperative management
+    Purpose: Primarily used for creating new resources or entirely replacing existing ones.
+    
+    Behavior: It directly instructs the Kubernetes API server to create an object based on the provided configuration. If the resource already exists, kubectl create will typically return an error.
+    
+    Use Cases: Suitable for initial deployments, creating temporary resources, or when you explicitly want to ensure a resource does not already exist before creation.
 ```

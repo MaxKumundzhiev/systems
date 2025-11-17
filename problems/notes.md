@@ -54,12 +54,15 @@
 
 
 16th Nov
-- chapter 3 (deploying k8s cluster)
+- chapter 3 (deploying k8s cluster)                     (done)
+- deploy sample app to k8s cluster                      (done)
+    https://dev.to/bravinsimiyu/how-to-dockerize-and-deploy-a-fast-api-application-to-kubernetes-cluster-35a9
+- chapter 4 (kubectl commands)                          (wip)
+
 - message brokers
     - create 2 microservices which communicate through message brokers
 
 - 8th chapter (greedy algorithms)                       (WIP)
 - binary search (2 problems)        
 - graphs (bfs) (3 problems)
-
 

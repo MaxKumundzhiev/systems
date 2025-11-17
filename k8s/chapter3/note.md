@@ -18,3 +18,12 @@ $ minikube delete
 
 
 The official Kubernetes client is kubectl: a command-line tool for interacting with the Kubernetes API. kubectl can be used to manage most Kubernetes objects, such as Pods, ReplicaSets, and Services. kubectl can also be used to explore and verify the overall health of the cluster.
+
+# Definitions
+Namespaces - k8s uses namespaces to organize objects in cluster. You can think of each namespace as a folder that holds a set of objects.
+
+
+# kubectl (api to communicate with k8s) commands
+```bash
+$ kubectl get <resource-name> <obj-name> - If you want to get a specific resource
+```

@@ -63,10 +63,13 @@
 
 
 17th November
-- binary search (2 problems)                            ()
+- binary search (2 problems)                            (done)
+    - search target in sorted array     (done)
+    - search target in sorted 2d array  (done)
+
+- 8th chapter (greedy algorithms)                       ()
 - graphs (bfs) (3 problems)                             ()
 - chapter 5 (Pods)                                      ()
-- 8th chapter (greedy algorithms)                       ()
 - backend service + database
     use case: user generates events on client side and client sends them to backend
               whereas backend writes them to queue and consumer at some point reads from queue and write to storage (click house)
@@ -75,5 +78,9 @@
         queue:  kafka
         storage: clickhouse
         running: k8s
+
+
+Use cases:
+    - get a video and cast it to diff languages (offline | online)
 
 

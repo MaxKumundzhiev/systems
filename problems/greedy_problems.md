@@ -98,3 +98,53 @@ print("План поездки:")
 for item in itinerary:
     print(f"{item['name']} ({item['cost']} баллов, {item['duration']} часов)")
 ```
+
+
+
+```python
+Вы работаете в фирме по производству мебели и поставляете мебель
+по всей стране. Коробки с мебелью размещаются в грузовике. Все
+коробки имеют разный размер, и вы стараетесь наиболее эффективно
+использовать доступное пространство. Как выбрать коробки для того,
+чтобы загрузка имела максимальную эффективность? Предложите
+жадную стратегию. Будет ли полученное решение оптимальным?
+
+
+def greedy_loading(capacity_volume, capacity_weight, boxes):
+    # Рассчитываем объем каждой коробки
+    for box in boxes:
+        volume = box["size"][0] * box["size"][1] * box["size"][2]
+        box['volume'] = volume
+    
+    # Сортируем коробки по объему и массе (убывание)
+    sorted_boxes = sorted(boxes, key=lambda x: (x['volume'], x['weight']), reverse=True)
+    
+    loaded_volume = 0
+    loaded_weight = 0
+    selected_boxes = []
+    
+    for box in sorted_boxes:
+        new_volume = loaded_volume + box['volume']
+        new_weight = loaded_weight + box['weight']
+        
+        # Проверяем ограничения груза
+        if new_volume <= capacity_volume and new_weight <= capacity_weight:
+            selected_boxes.append(box)
+            loaded_volume += box['volume']
+            loaded_weight += box['weight']
+    
+    return selected_boxes
+
+
+# Тестовые данные
+capacity_volume = 10_000  # Объем грузовика
+capacity_weight = 5000    # Грузоподъемность грузовика
+boxes = [
+    {"size": [10, 20, 50], "weight": 10.0},  # маленькая коробка
+    {"size": [10, 20, 100], "weight": 30.0}  # большая коробка
+]
+
+result = greedy_loading(capacity_volume, capacity_weight, boxes)
+print("Загруженные коробки:", result)
+
+```

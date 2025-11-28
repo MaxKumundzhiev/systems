@@ -15,6 +15,24 @@ schedule = [
     ("music", [11:00, 12:00])
 ]
 
+def create_optimal_schedule(schedule):
+    # Сортируем расписание по концу занятий (это ключевой фактор для жадного алгоритма)
+    sorted_schedule = sorted(schedule, key=lambda x: x[1][1])
+
+    optimal_schedule = []   # Итоговое оптимальное расписание
+    last_end_time = 0       # Время окончания последнего занятого урока
+
+    for subject, times in sorted_schedule:
+        start_time, end_time = times
+        
+        # Проверяем, начинается ли новый урок позже завершения предыдущего
+        if start_time >= last_end_time:
+            optimal_schedule.append((subject, list(times)))
+            last_end_time = end_time
+            
+    return optimal_schedule
+
+
 # find the lesson which ends earliest
 # pick next lesson which ends earlist after first
 # repeat ...

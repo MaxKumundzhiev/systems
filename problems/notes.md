@@ -67,7 +67,8 @@
     - search target in sorted array     (done)
     - search target in sorted 2d array  (done)
 
-- 8th chapter (greedy algorithms)                       ()
+18th November
+- 8th chapter (greedy algorithms)                       (wip)
 - graphs (bfs) (3 problems)                             ()
 - chapter 5 (Pods)                                      ()
 - backend service + database

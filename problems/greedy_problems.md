@@ -150,5 +150,54 @@ boxes = [
 
 result = greedy_loading(capacity_volume, capacity_weight, boxes)
 print("Загруженные коробки:", result)
+```
 
+
+
+```python
+Вы открываете собственную авторскую програм-
+му на радио и хотите, чтобы вас слушали во всех
+50 штатах. Нужно решить, на каких радиостанци-
+ях должна транслироваться ваша передача. Каждая
+станция стоит денег, поэтому количество станций не-
+обходимо свести к минимуму. Имеется список станций.
+
+Каждая станция покрывает определенный набор штатов, эти наборы пере-
+крываются.
+
+Как найти минимальный набор станций, который бы покрывал все 50 шта-
+тов?
+
+
+states = set("mt", "wa", "or", "id", "nv", "ut", "ca", "az")
+stations = {
+    "kone": set("id", "nv", "ut"),
+    "ktwo": set("wa", "id", "mt"),
+    "kthree": set("or", "nv", "ca"),
+    "kfour": set("nv", "uv"),
+    "kfive": set("ca", "az")
+}
+
+"""
+1. Выбрать станцию, покрывающую наибольшее количество штатов, еще
+не входящих в покрытие. Если станция будет покрывать некоторые
+штаты, уже входящие в покрытие, это нормально.
+
+2. Повторять, пока остаются штаты, не входящие в покрытие.
+"""
+
+covered_area = set()
+while states_needed:
+    best_station = None
+    states_covered = set()
+    for station, states in stations.items():
+        # содержит штаты, присутствующие как в states_needed,
+        # так и в states_for_station. Таким образом, covered — множество штатов, не
+        # входящих в покрытие, которые покрываются текущей станцией
+        covered = states_needed & states
+        if len(covered) > len(states_covered):
+            best_station = station
+            states_covered = covered
+    states_needed -= states_covered
+    final_stations.add(best_station)
 ```

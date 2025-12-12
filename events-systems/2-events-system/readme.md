@@ -7,3 +7,17 @@ We expect following structure:
     - API service called notifications
         - it is supposed to consume events from topic which stands for notifications (for users, aka order created)
 
+
+
+# Sys Design
+```
+                                                                              -------------------
+                       order                                                  orders service        + endpoint GET orders/
+--------------------   -------------->   (topic: new_orders)    <-----------  -------------------
+   mimic client    |   notification
+--------------------   -------------->   (topic: notifications) <-----------  -------------------
+                                                                               notifications service + endpoint GET notifications/  
+                                                                              -------------------
+
+
+```

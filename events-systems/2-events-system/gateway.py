@@ -2,9 +2,21 @@ from uuid import uuid4
 from datetime import datetime
 
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-app = FastAPI(title="gateway")
+from aiokafka import AIOKafkaProducer
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.kafka_producer = AIOKafkaProducer(bootstrap_servers="kafka:29092")
+    await app.state.kafka_producer.start()
+    yield
+    await app.state.kafka_producer.stop()
+
+
+app = FastAPI(title="gateway", lifespan=lifespan)
 
 
 class OrderIn(BaseModel):
@@ -14,11 +26,11 @@ class OrderIn(BaseModel):
 
 
 class OrderOut(BaseModel):
-    id: str = str(uuid4())
+    id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     items: list[str]
     total_price: float
-    created_at: str = str(datetime.now())
+    created_at: str = Field(default_factory=lambda: str(datetime.now()))
 
 
 class NewOrderNotification(BaseModel):
@@ -32,7 +44,13 @@ async def create_new_order(request: OrderIn):
     """
     write to kafka topic named new_orders
     """
-    return OrderOut(**request.model_dump())
+    topic: str = "new_orders"
+    producer: AIOKafkaProducer = app.state.kafka_producer
+    event = OrderOut(**request.model_dump())
+    msg = event.model_dump_json().encode("utf-8")
+    await producer.send_and_wait(topic, msg)
+    print("message:" f"Message '{msg}' sent to Kafka topic '{topic}'")
+    return event
 
 
 @app.post("/notifications/")
@@ -40,8 +58,12 @@ async def create_new_notification(request: NewOrderNotification):
     """
     write to kafka topic named new_orders
     """
-    print(request)
-    return {"status": "success"}
+    topic: str = "notifications"
+    producer: AIOKafkaProducer = app.state.kafka_producer
+    msg = request.model_dump_json().encode("utf-8")
+    await producer.send_and_wait(topic, msg)
+    print("message:" f"Message '{msg}' sent to Kafka topic '{topic}'")
+    return {"status": "sent notification"}
 
 
 if __name__ == "__main__":

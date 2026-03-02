@@ -1,31 +1,7 @@
-"""
-Тебе нужно написать софт для небольшого отеля. Так как это MVP, то не будем использовать БД и сделаем все in-memory.
-
-У бизнеса есть несколько требований к задаче:
-
-Поиск свободных номеров. Реализация поиска свободных номеров по параметрам:
-- Дата заезда
-- Количество дней пребывания
-- Количество человек
-- Бюджет на поездку
-- Удобства в комнате (wifi, ac, tv)
-
-Какие рассуждения
-Поидее у отеля есть база номеров - они либо свободны, либо заняты.
-Более того, если они заняты, то на какой то период.
-
-Это наводит на мысль, что для каждого номера нам нужно хранить даты, когда он занят
-и в случае если пользователь хочет проверить на определенную дату то
-1. мы должны найти подходящий номер по критериям (кроме даты)
-2. проверить номер по датам
-
-"""
-
 from enum import StrEnum
 from typing import Set, List, Optional, Dict
 from datetime import date, timedelta
 from dataclasses import dataclass
-
 from abc import ABC, abstractmethod
 
 
@@ -46,7 +22,7 @@ class Room:
     id: int
     price: int
     capacity: int
-    amenties: Set[Amenity]
+    amenities: Set[Amenity]  # ✅ fixed name
     bookings: List[Booking]
 
 
@@ -56,31 +32,37 @@ class SearchRequest:
     days: int
     guests: int
     budget: int
-    amenties: Set[Amenity]
+    amenities: Set[Amenity]  # ✅ fixed name
 
 
 #### Interfaces ####
 class RoomRepository(ABC):
     @abstractmethod
     async def find_all(self) -> List[Room]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def find_by_id(self, room_id: int) -> Optional[Room]:
-        pass
+        raise NotImplementedError
 
 
 class SearchRoomService(ABC):
     @abstractmethod
     async def find_rooms_by_request(self, search_request: SearchRequest) -> List[Room]:
-        pass
+        raise NotImplementedError
 
 
 #### Implementation ####
 class SimpleRoomRepository(RoomRepository):
-    def __init__(self, rooms: List[Room]) -> None:
+    """
+    find_all() возвращает shallow copy списка: те же объекты Room.
+    Изменения (например room.bookings.append в бронировании) видны везде — один объект в памяти.
+    find_by_id использует Dict[int, Room] для O(1) доступа.
+    """
+
+    def __init__(self, rooms: List[Room]):
         self._rooms = rooms
-        self._rooms_by_id: Dict[int, Room] = {room.id: room for room in rooms}
+        self._rooms_by_id: Dict[int, Room] = {r.id: r for r in rooms}
 
     async def find_all(self) -> List[Room]:
         return self._rooms.copy()
@@ -90,56 +72,45 @@ class SimpleRoomRepository(RoomRepository):
 
 
 class SearchRoomServiceImpl(SearchRoomService):
-    def __init__(self, repository: RoomRepository) -> None:
-        self._repo = repository
+    def __init__(self, room_repository: RoomRepository):
+        self.room_repository = room_repository
 
-    async def find_rooms_by_request(self, search_request: SearchRequest) -> List[Room]:
-        # fetch all rooms from db
-        rooms = await self._repo.find_all()
+    async def find_rooms_by_request(self, request: SearchRequest) -> List[Room]:
+        all_rooms = await self.room_repository.find_all()
+        to_date = request.from_date + timedelta(days=request.days)
 
-        date_from = search_request.from_date
-        date_to = search_request.from_date + timedelta(days=search_request.days)
+        available_rooms: List[Room] = []
 
-        # sequentially filter by: guests, budget, amnieties, finally dates
-        available_rooms = []
-        for room in rooms:
-            if self._check_price(room, search_request.budget, search_request.days):
+        for room in all_rooms:
+            if not self._check_price(room, request.budget, request.days):
                 continue
-
-            if self._check_capacity(room, search_request.guests):
+            if not self._check_capacity(room, request.guests):
                 continue
-
-            if self._check_amnieties(room, search_request.amenties):
+            if not self._check_amenities(room, request.amenities):
                 continue
-
-            if self._check_availability(room, date_from, date_to):
+            if not self._check_availability(room, request.from_date, to_date):
                 continue
 
             available_rooms.append(room)
 
         return sorted(available_rooms, key=lambda r: r.id)
 
-    async def _check_price(self, room: Room, budget: int, days: int) -> bool:
-        return budget >= room.price * days
+    def _check_price(self, room: Room, budget: int, days: int) -> bool:
+        return room.price * days <= budget
 
-    async def _check_capacity(self, room: Room, guests: int) -> bool:
+    def _check_capacity(self, room: Room, guests: int) -> bool:
         return room.capacity >= guests
 
-    async def _check_amnieties(self, room: Room, amnieties: Set[Amenity]) -> bool:
-        return amnieties.issubset(room.amenties)
+    def _check_amenities(self, room: Room, required_amenities: Set[Amenity]) -> bool:
+        return required_amenities.issubset(room.amenities)
 
-    async def _check_availability(
-        self, room: Room, date_from: date, date_to: date
-    ) -> bool:
-        return await self._check_availability_for_all_bookings(
-            room.bookings, date_from, date_to
-        )
+    def _check_availability(self, room: Room, from_date: date, to_date: date) -> bool:
+        return check_availability(room, from_date, to_date)
 
-    async def _check_availability_for_all_bookings(
-        self, bookings: List[Booking], date_from: date, date_to: date
-    ) -> bool:
-        """available if dates do not intersect (overlap)"""
-        for booking in bookings:
-            if date_from < booking.to_date and date_to > booking.from_date:
-                return False
-        return True
+
+def check_availability(room: Room, from_date: date, to_date: date) -> bool:
+    for booking in room.bookings:
+        # overlap check
+        if from_date < booking.to_date and to_date > booking.from_date:
+            return False
+    return True

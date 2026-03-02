@@ -65,9 +65,15 @@ class BookService(ABC):
 
 ### Implementation ###
 class SimpleRoomRepository(RoomRepository):
-    def __init__(self, rooms: List[Room]) -> None:
+    """
+    find_all() возвращает shallow copy списка: те же объекты Room.
+    Изменения (например room.bookings.append в бронировании) видны везде — один объект в памяти.
+    find_by_id использует Dict[int, Room] для O(1) доступа.
+    """
+
+    def __init__(self, rooms: List[Room]):
         self._rooms = rooms
-        self._rooms_by_id: Dict[int, Room] = {room.id: room for room in rooms}
+        self._rooms_by_id: Dict[int, Room] = {r.id: r for r in rooms}
 
     async def find_all(self) -> List[Room]:
         return self._rooms.copy()
@@ -77,58 +83,48 @@ class SimpleRoomRepository(RoomRepository):
 
 
 class SearchRoomServiceImpl(SearchRoomService):
-    def __init__(self, repo: RoomRepository) -> None:
-        self._repo = repo
+    def __init__(self, room_repository: RoomRepository):
+        self.room_repository = room_repository
 
     async def find_rooms_by_request(self, request: SearchRequest) -> List[Room]:
-        rooms: List[Room] = await self._repo.find_all()
-        available: Optional[List[Room]] = []
-        from_date, to_date = request.from_date, request.from_date + timedelta(
-            days=request.days
-        )
+        all_rooms = await self.room_repository.find_all()
+        to_date = request.from_date + timedelta(days=request.days)
 
-        for room in rooms:
-            if self._check_price(request.budget, request.days, room.price):
+        available_rooms: List[Room] = []
+
+        for room in all_rooms:
+            if not self._check_price(room, request.budget, request.days):
                 continue
-            if self._check_capacity(request.guests, room.capacity):
+            if not self._check_capacity(room, request.guests):
                 continue
-            if self._check_amenities(request.amenities, room.amenities):
+            if not self._check_amenities(room, request.amenities):
                 continue
-            if self._check_availability(from_date, to_date, room.bookings):
+            if not self._check_availability(room, request.from_date, to_date):
                 continue
-            available.append(room)
-        return sorted(available, key=lambda room: room.id)
 
-    async def _check_availability(
-        self, requested_from: date, requested_to: date, bookings: List[Booking]
-    ) -> bool:
-        for booking in bookings:
-            if not self._check_room_is_available(
-                requested_from, requested_to, booking.from_date, booking.to_date
-            ):
-                return False
-        return True
+            available_rooms.append(room)
 
-    async def _check_price(self, budget: int, days: int, price_per_day: int) -> bool:
-        return price_per_day * days <= budget
+        return sorted(available_rooms, key=lambda r: r.id)
 
-    async def _check_capacity(self, guests: int, capacity: int) -> bool:
-        return guests <= capacity
+    def _check_price(self, room: Room, budget: int, days: int) -> bool:
+        return room.price * days <= budget
 
-    async def _check_amenities(
-        self, requested_amenities: Set[Amenity], available_amenties: Set[Amenity]
-    ) -> bool:
-        return requested_amenities.issubset(available_amenties)
+    def _check_capacity(self, room: Room, guests: int) -> bool:
+        return room.capacity >= guests
 
-    async def _check_room_is_available(
-        self,
-        requested_from: date,
-        requested_to: date,
-        available_from: date,
-        available_to: date,
-    ) -> bool:
-        overlap = max(available_from, requested_from) < min(requested_to, available_to)
-        return not overlap
+    def _check_amenities(self, room: Room, required_amenities: Set[Amenity]) -> bool:
+        return required_amenities.issubset(room.amenities)
+
+    def _check_availability(self, room: Room, from_date: date, to_date: date) -> bool:
+        return check_availability(room, from_date, to_date)
+
+
+def check_availability(room: Room, from_date: date, to_date: date) -> bool:
+    for booking in room.bookings:
+        # overlap check
+        if from_date < booking.to_date and to_date > booking.from_date:
+            return False
+    return True
 
 
 class LockPoolManager:
@@ -183,10 +179,10 @@ class BookServiceImpl(BookService):
             room: Optional[Room] = await self._repo.find_by_id(room_id)
             if not room:
                 raise ValueError(f"Room with id {room_id} is not found")
-            if not await self._search_room_service._check_availability(
-                from_date, to_date, room.bookings
-            ):
-                raise ValueError(f"Room with id {room_id} is not available")
+            if not check_availability(room, from_date, to_date):
+                raise ValueError(
+                    f"Room with id {room_id} is not available for period from {from_date} to {to_date}"
+                )
 
             room.bookings.append(booking)
             return booking

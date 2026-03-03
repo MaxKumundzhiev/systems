@@ -31,13 +31,15 @@
 }
 """
 
+import asyncio
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, AsyncIterator
 from random import randint
+from contextlib import asynccontextmanager
 
 
-@dataclass
+@dataclass(frozen=True)
 class PlayRequest:
     user_id: int
     title_id: int
@@ -56,28 +58,45 @@ class Session:
 class SessionsPlaybackRepository(ABC):
     @abstractmethod
     async def get_all_sessions(self) -> Dict[str, Session]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_session_by_client_request_id(
         self, client_request_id: str
     ) -> Optional[Session]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def insert_new_session(
         self, client_request_id: str, session: Session
     ) -> None:
-        pass
+        raise NotImplementedError
 
 
 class SessionPlaybackService(ABC):
     @abstractmethod
     async def start_session(self, play_request: PlayRequest) -> Session:
-        pass
+        raise NotImplementedError
 
 
 ## Implementation ##
+class SessionsLockManager:
+    DEFAULT_POOL_SIZE: int = 512
+
+    def __init__(self, pool_size: int = DEFAULT_POOL_SIZE):
+        self._pool_size = pool_size
+        self._locks: List[asyncio.Lock] = [asyncio.Lock() for _ in range(pool_size)]
+
+    def _index(self, key: str) -> int:
+        return hash(key) % self._pool_size
+
+    @asynccontextmanager
+    async def lock(self, client_request_id: str) -> AsyncIterator[None]:
+        lock = self._locks[self._index(client_request_id)]
+        async with lock:
+            yield
+
+
 class SimpleSessionsPlaybackRepository(SessionsPlaybackRepository):
     def __init__(self, sessions: Optional[List[Session]] = None) -> None:
         sessions = sessions or []
@@ -95,24 +114,32 @@ class SimpleSessionsPlaybackRepository(SessionsPlaybackRepository):
         self, client_request_id: str, session: Session
     ) -> None:
         self._sessions[client_request_id] = session
-        return
 
 
-class SessionPlaybackSevriceImpl(SessionPlaybackService):
-    def __init__(self, repo: SessionsPlaybackRepository) -> None:
+class SessionPlaybackServiceImpl(SessionPlaybackService):
+    def __init__(
+        self,
+        repo: SessionsPlaybackRepository,
+        sessions_lock_manager: SessionsLockManager,
+    ) -> None:
         self._repo = repo
+        self._locks_manager = sessions_lock_manager
 
     async def start_session(self, play_request: PlayRequest) -> Session:
-        session: Optional[Session] = await self._repo.get_session_by_client_request_id(
-            play_request.client_request_id
-        )
-        if session:
-            return session
-        new_session = Session(
-            id=randint(0, 1_000_000),
-            title_id=play_request.title_id,
-            user_id=play_request.user_id,
-            client_request_id=play_request.client_request_id,
-        )
-        await self._repo.insert_new_session(play_request.client_request_id, new_session)
-        return new_session
+        async with self._locks_manager.lock(play_request.client_request_id):
+            session = await self._repo.get_session_by_client_request_id(
+                play_request.client_request_id
+            )
+            if session is not None:
+                return session
+
+            new_session = Session(
+                id=randint(0, 1_000_000),
+                title_id=play_request.title_id,
+                user_id=play_request.user_id,
+                client_request_id=play_request.client_request_id,
+            )
+            await self._repo.insert_new_session(
+                play_request.client_request_id, new_session
+            )
+            return new_session

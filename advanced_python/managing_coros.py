@@ -66,6 +66,10 @@ async def concurrent():
             print(f"caught exception in coro exec: {type(result)} {result}")
 
 
+async def concurrent_with_control():
+    """ """
+
+
 if __name__ == "__main__":
-    # asyncio.run(sequential())
+    asyncio.run(sequential())
     asyncio.run(concurrent())

@@ -2,11 +2,39 @@ import asyncio
 from random import randint
 
 
-async def worker(id: int, name: str) -> None:
+"""
+1. последовательно через await coro()
+2. конкурентно через gather() с флагом return_exception=True|False
+3. через create_task() одну задачу
+4. через create_task() много задач
+_______________________________________________________________________________________
+
+asyncio.create_task()
+    Запускает корутину как отдельную задачу в event loop.
+
+asyncio.gather()
+    Запускает несколько awaitable конкурентно и ждёт все.
+
+asyncio.wait()
+    Ждёт набор задач с более гибким контролем. (done, pending)
+
+asyncio.as_completed()
+    Позволяет обрабатывать результаты по мере завершения, а не по порядку запуска.
+
+asyncio.TaskGroup()
+    Современный структурированный способ управлять группой задач.
+
+asyncio.wait_for()
+    Ограничивает выполнение по времени.
+"""
+
+
+async def worker(id: int, name: str) -> str:
     delay = randint(0, 3)
-    print(f"Worker {id} --> {name} working for {delay}.")
+    msg = f"Worker {id} --> {name} working for {delay}."
+    print(msg)
     await asyncio.sleep(delay)
-    return None
+    return msg
 
 
 async def worker_with_random_status(id: int, name: str) -> int:
@@ -32,7 +60,7 @@ async def sequential():
     await worker(id=2, name="sync")
 
 
-async def concurrent():
+async def concurrent_with_gather():
     """
     запускает все корутины одновременно
     ждёт всех
@@ -66,10 +94,46 @@ async def concurrent():
             print(f"caught exception in coro exec: {type(result)} {result}")
 
 
-async def concurrent_with_control():
-    """ """
+async def single_create_task():
+    """
+    create_task - обварачивает корутину в Task обьект и внутри запустит как только ивент оуп даст это сделать
+    """
+    task = asyncio.create_task(worker(id=1, name="worker-1"))
+    result = await task
+    print(result)
+
+
+async def multiple_create_task():
+    tasks = [asyncio.create_task(worker(id=id, name=f"worker-{id}")) for id in range(5)]
+    # tasks now sent to event loop
+    # we need to fetch results
+    """
+    Можно ждать:
+        все
+        первую завершившуюся
+        первую упавшую
+    Через:
+        ALL_COMPLETED
+        FIRST_COMPLETED
+        FIRST_EXCEPTION
+    """
+
+    done, pending = await asyncio.wait(tasks)
+
+
+async def multiple_create_task_with_as_completed():
+    tasks = [asyncio.create_task(worker(id=id, name=f"worker-{id}")) for id in range(5)]
+    # tasks now sent to event loop
+    # we need to fetch results
+
+    for finished in asyncio.as_completed(tasks):
+        result = await finished
+        print(result)
 
 
 if __name__ == "__main__":
-    asyncio.run(sequential())
-    asyncio.run(concurrent())
+    # asyncio.run(sequential())
+    # asyncio.run(concurrent_with_gather())
+    # asyncio.run(single_create_task())
+    # asyncio.run(multiple_create_task())
+    asyncio.run(multiple_create_task_with_as_completed())

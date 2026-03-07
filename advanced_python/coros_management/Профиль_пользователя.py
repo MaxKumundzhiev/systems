@@ -19,11 +19,13 @@ class User:
 
 # interfaces
 class UserRepository(ABC):
+    @abstractmethod
     async def get_user(self, user_id: int) -> Optional[User]:
         raise NotImplemented
 
 
 class UserService(ABC):
+    @abstractmethod
     async def handle_request(self, user_id: int) -> str:
         raise NotImplemented
 

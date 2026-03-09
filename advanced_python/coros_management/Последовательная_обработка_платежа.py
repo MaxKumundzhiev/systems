@@ -1,4 +1,6 @@
 """
+await coro()
+
 Есть шаги:
     - validate_order(order_id)
     - reserve_money(order_id)

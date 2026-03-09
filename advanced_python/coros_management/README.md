@@ -1,0 +1,83 @@
+# gather()
+
+# create_task()
+
+# wait()
+wait это механизм ожидания задач с 3 разными режимами
+- закончилась первая (FIRST_COMPLETE)
+- все закончились (ALL_COMPLETE)
+- первая ошибка (FIRST_EXCEPTION)
+
+при этом рещультаты раскидываются по 2 множествам, done & pending
+в wait нужно передавать set[Task]
+```python
+async def job():
+    print("job")
+    return
+
+tasks = {
+    asyncio.create_task(job()) for _ in range(3)
+}
+
+done, pending = asyncio.wait(tasks, return_when=<flag>)
+```
+
+Пример, есть 3 задачи
+t1 = 1 sec
+t2 = 3 sec
+t3 = 5 sec
+
+FIRST_COMPLETE
+done = {t1}
+pending = {t2, t3}
+
+FIRST_EXCEPTION
+Сценарий 1 — одна задача падает
+t1 -> success
+t2 -> exception
+t3 -> still running
+
+Как только t2 падает:
+done = {t1, t2}
+pending = {t3}
+
+Сценарий 2 — никто не падает
+t1 success
+t2 success
+t3 success
+
+Тогда wait ведёт себя как ALL_COMPLETED.
+done = {t1, t2, t3}
+pending = set()
+
+Наглядная временная линия
+
+Задачи:
+t1 -> success after 1s
+t2 -> exception after 2s
+t3 -> success after 3s
+
+FIRST_COMPLETED
+t=1
+done = {t1}
+pending = {t2, t3}
+
+FIRST_EXCEPTION
+t=2
+done = {t1, t2}
+pending = {t3}
+
+ALL_COMPLETED
+t=3
+done = {t1, t2, t3}
+pending = {}
+
+```text
+Когда что использовать
+режим	                когда применять
+FIRST_COMPLETED	    race / fastest response
+FIRST_EXCEPTION	    остановить batch при первой ошибке
+ALL_COMPLETED	    дождаться всех задач
+```
+
+# as_completed()

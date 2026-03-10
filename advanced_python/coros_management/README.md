@@ -133,3 +133,14 @@ for ft in as_complete(tasks):
     except Exception:
         continue
 ```
+
+# wait_for()
+wait_for() - механизм, который позволяет добавить timeout на awaitable. по факту это как обычный await только с ограничением по времени.
+
+```python
+res = await asyncio.wait_for(coro(), timeout=<>)
+```
+
+Типы ошибок
+1. TimeoutError
+2. RuntimeError (inside coroutine itself)

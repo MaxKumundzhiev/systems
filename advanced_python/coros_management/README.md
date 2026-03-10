@@ -107,3 +107,29 @@ for future in asyncio.as_complete(tasks):
 3️⃣ подписывается на завершение
 4️⃣ возвращает итератор futures
 Каждый элемент итератора — это future, который можно await.
+
+Существует 2 общих подхода (policies): `cancel-on-error`, `continue-on-error`
+
+```python
+`cancel-on-error`
+
+for ft in as_complete(tasks):
+    try:
+        result = await ft
+    except Exception:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await gather(*tasks, return_exceptions=True)
+        raise
+```
+
+```python
+`continue-on-error`
+
+for ft in as_complete(tasks):
+    try:
+        result = await ft
+    except Exception:
+        continue
+```

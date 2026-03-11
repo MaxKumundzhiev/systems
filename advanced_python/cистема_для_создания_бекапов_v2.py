@@ -1,75 +1,47 @@
-import asyncio
 import io
-import time
 from abc import ABC, abstractmethod
 
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
-from collections.abc import AsyncIterator
-from typing import Union
-
-
-class Processor(ABC):
-    """Абстрактный интерфейс для обработки данных (сжатие/шифрование)."""
-
-    @abstractmethod
-    def compress_and_encrypt(self, data: bytes) -> bytes:
-        """Сжимает и шифрует данные."""
-        pass
-
-    @abstractmethod
-    def decrypt_and_uncompress(self, data: bytes) -> bytes:
-        """Расшифровывает и распаковывает данные."""
-        pass
-
-
+## interfaces ##
 class Folder(ABC):
-    """Абстрактный интерфейс для работы с хранилищем файлов."""
+    """
+    1 KB --> 1024 BYTE
+    1 MB --> 1024 KB
 
-    MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MiB
+    1 MB   --> 1024 BYTE * 1024 BYTE
+    100 MB --> 1 MB * 100 --> 1024 BYTE * 1024 BYTE * 100 ~= 10^22 BYTE
+    """
+
+    MAX_FILE_SIZE: int = 1024 * 1024 * 100  # 100 MB
 
     @abstractmethod
     async def write_file(self, name: str, data: bytes) -> None:
-        """Записывает файл в хранилище."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def read_file(self, name: str) -> bytes:
-        """Читает файл из хранилища."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def list_files(self) -> list[str]:
-        """Возвращает список всех файлов в хранилище."""
-        pass
+        raise NotImplementedError
 
 
-"""
-operations
-    I/O - read_files, write_files
-    CPU - compress, decompress
+class Processor(ABC):
+    @abstractmethod
+    async def compress_and_encrypt(self, data: bytes) -> bytes:
+        raise NotImplementedError
 
-for backup we want read by chunks, compress (by chunks) and write by chunks
-"""
+    @abstractmethod
+    async def decrypt_and_uncompress(self, data: bytes) -> bytes:
+        raise NotImplementedError
 
 
+## implementation ##
 class BackupManager:
-    def __init__(self, folder: Folder, processor: Processor):
+    def __init__(self, folder: Folder, processor: Processor) -> None:
         self._folder = folder
         self._processor = processor
 
-    async def _read_by_chunks(self, in_stream: io.BufferedIOBase) -> bytes:
-        """async iterator which read in stream bytes by chunks."""
-        async def __aenter__(self):
-            ...
-        
-        async def __aexit__(self):
-            ...
-
-        
-
     async def backup(self, in_stream: io.BufferedIOBase) -> None:
-        pass
-
-    async def restore(self, out_stream: io.BufferedIOBase) -> None:
         pass

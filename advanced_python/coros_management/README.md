@@ -144,3 +144,54 @@ res = await asyncio.wait_for(coro(), timeout=<>)
 Типы ошибок
 1. TimeoutError
 2. RuntimeError (inside coroutine itself)
+
+```python
+import asyncio
+
+class ChunkTimeoutError(Exception):
+    pass
+
+async def transcribe_audio_chunk(chunk: bytes) -> str: ...
+
+async def cleanup(task: asyncio.Task[str]) -> None:
+    if not task.done():
+        task.cancel()
+    await asyncio.gather(task, return_exceptions=True)
+
+
+async def process_chunk(chunk: bytes) -> str:
+    task: asyncio.Task[str] = asyncio.create_task(transcribe_audio_chunk(chunk))
+
+    try:
+        return await asyncio.wait_for(task, timeout=0.3)
+    except asyncio.TimeoutError as e:
+        await cleanup(task)
+        raise ChunkTimeoutError("transcription exceeded 300 ms") from e
+    except Exception as e:
+        await cleanup(task)
+        raise
+```
+
+
+# TaskGroup()
+это контекст-менеджер для запуска и управления группой async-задач
+Он реализует structured concurrency.
+
+Гарантии:
+- все созданные задачи будут завершены
+- если одна задача падает, остальные автоматически отменяются
+- после выхода из блока async with все задачи уже завершены
+
+```python
+async with asyncio.TaskGroup() as tg:
+    tg.create_task(job())
+    tg.create_task(job())
+-----------
+
+try:
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(job1())
+        tg.create_task(job2())
+except* RuntimeError:
+    print("runtime error happened")
+```

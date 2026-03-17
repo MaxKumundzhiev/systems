@@ -15,7 +15,6 @@ class RWLock:
             while self._writer or self._writers_waiting > 0:
                 await self._cond.wait()
             self._readers += 1
-
         try:
             yield
         finally:

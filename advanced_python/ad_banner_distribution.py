@@ -92,3 +92,50 @@ if __name__ == "__main__":
     for _ in range(5):
         weight, id = service.get_advertisment()
         print(weight, id)
+
+
+"""
+import bisect
+import random
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar('T')
+RandomGenerator = Callable[[], float]
+
+
+class DiscreteDistributionSampler(Generic[T]):
+    def __init__(
+        self, 
+        objects_with_weights: list[tuple[T, float]],
+        random_generator: RandomGenerator = random.random
+    ) -> None:
+        self._objects: list[T] = []
+        self._prefix: list[float] = []
+
+        total: float = 0.0
+        for obj, w in objects_with_weights:
+            if w <= 0:
+                raise ValueError("weight must be > 0")
+            total += w
+            self._objects.append(obj)
+            self._prefix.append(total)
+        
+        self._total_weight = total
+        self._random_generator = random_generator
+
+    def add(self, obj: T, weight: float) -> None:
+        if weight <= 0:
+            raise ValueError("weight must be > 0")
+
+        self._objects.append(obj)
+        self._total_weight += float(weight)
+        self._prefix.append(self._total_weight)
+        
+    def sample(self) -> T:
+        if not self._objects:
+            raise ValueError("No objects to sample")
+
+        x = self._random_generator() * self._total_weight
+        i = bisect.bisect_right(self._prefix, x)
+        return self._objects[i]
+"""

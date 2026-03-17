@@ -7,6 +7,11 @@ from uuid import uuid4
 import random
 
 """
+idea of condition
+    asyncio.Condition is a synchronization primitive. (like lock)
+    Lets coroutines wait until some shared state meets a condition.
+    Works with a lock internally to avoid race conditions.
+
 model a situation:
     the system produces start session event and send to the pending hashtable (by key)
     session_id: {"start_at": ..., "end_at": ...,}

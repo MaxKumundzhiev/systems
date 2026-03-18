@@ -704,3 +704,213 @@ Asyncio version per tenant
 Dynamic tenant limits
 
 Metrics per tenant: queue length, rejects, latency
+
+
+🧩 1. Rate-Limited API Gateway (Amazon style)
+Условие
+
+API Gateway принимает запросы от клиентов.
+Сервис имеет лимит одновременных запросов, чтобы не перегрузить бэкенд.
+
+Нужно реализовать backpressure: новые запросы ждут или отклоняются, если лимит достигнут.
+
+Требования:
+
+Ограничение количества параллельных запросов через Semaphore
+
+Thread-safe или async-friendly
+
+Метрики: dropped requests, queue length
+
+Code Backbone
+from threading import Semaphore, Thread
+import time
+import random
+
+class RateLimitedGateway:
+    def __init__(self, max_concurrent: int):
+        self.sem = Semaphore(max_concurrent)
+
+    def handle_request(self, request_id: int):
+        if not self.sem.acquire(blocking=False):
+            print(f"Request {request_id} rejected due to backpressure")
+            return
+        try:
+            self._process(request_id)
+        finally:
+            self.sem.release()
+
+    def _process(self, request_id: int):
+        time.sleep(random.uniform(0.05, 0.2))
+        print(f"Request {request_id} processed")
+
+Follow-up:
+
+Асинхронная версия с asyncio.Semaphore
+
+Настройка queue + drop strategy
+
+Метрики: p50/p95 latency, reject rate
+
+🧩 2. Bulk Data Ingestion with Backpressure (Google style)
+Условие
+
+Сервис получает поток данных от IoT устройств.
+Если поток превышает скорость обработки, нужно замедлять входящие данные (backpressure) через семафор.
+
+Требования:
+
+Async-friendly ingestion
+
+Semaphore для ограничения concurrency
+
+Drop или throttle данные при перегрузке
+
+Code Backbone
+import asyncio
+from asyncio import Semaphore
+import random
+
+class IoTIngestor:
+    def __init__(self, max_workers: int):
+        self.sem = Semaphore(max_workers)
+
+    async def ingest(self, data):
+        async with self.sem:
+            await self._process(data)
+
+    async def _process(self, data):
+        await asyncio.sleep(random.uniform(0.01, 0.05))
+        print(f"Ingested: {data}")
+
+Follow-up:
+
+Настроить dynamic semaphore (адаптивная скорость)
+
+Метрики: queue length, dropped messages
+
+Поддержка high-throughput C10k
+
+🧩 3. Video Upload Service with Concurrency Limit (Netflix style)
+Условие
+
+Много пользователей загружают видео одновременно.
+Сервис может обрабатывать только N видео одновременно.
+
+Нужно:
+
+Ограничить concurrency через Semaphore
+
+Если лимит достигнут → показать пользователю “retry later” (backpressure)
+
+Code Backbone
+from threading import Semaphore, Thread
+import time
+
+class VideoUploader:
+    def __init__(self, max_uploads: int):
+        self.sem = Semaphore(max_uploads)
+
+    def upload(self, video_id: str):
+        if not self.sem.acquire(blocking=False):
+            print(f"Video {video_id} rejected, try later")
+            return
+        try:
+            self._process(video_id)
+        finally:
+            self.sem.release()
+
+    def _process(self, video_id: str):
+        time.sleep(0.2)  # simulate upload
+        print(f"Video {video_id} uploaded")
+
+Follow-up:
+
+Асинхронная версия с asyncio
+
+Метрики: reject rate, queue time
+
+Support bulk uploads / batch processing
+
+🧩 4. Streaming Chat Service (Slack-style)
+Условие
+
+Сервис обрабатывает реальное время чата.
+Если слишком много сообщений одновременно → нужно замедлять поток через backpressure.
+
+Требования:
+
+Ограничить количество одновременно обрабатываемых сообщений
+
+Drop или delay при перегрузке
+
+Thread-safe / async-friendly
+
+Code Backbone
+import asyncio
+from asyncio import Semaphore
+import random
+
+class ChatServer:
+    def __init__(self, max_concurrent: int):
+        self.sem = Semaphore(max_concurrent)
+
+    async def handle_message(self, msg: str):
+        if self.sem.locked():
+            print(f"Backpressure: message '{msg}' delayed")
+        async with self.sem:
+            await self._process(msg)
+
+    async def _process(self, msg: str):
+        await asyncio.sleep(random.uniform(0.01, 0.05))
+        print(f"Processed message: {msg}")
+
+Follow-up:
+
+Sliding window metrics: message latency, backpressure events
+
+Adaptive concurrency (increase limit if CPU idle)
+
+Batch messages for storage or analytics
+
+🧩 5. Sensor Event Processing with Priority Queue (Tesla / IoT)
+Условие
+
+Сенсорные данные приходят с разных устройств.
+
+Есть лимит на обработку одновременно
+
+Высокоприоритетные события должны обрабатываться раньше низкоприоритетных
+
+Backpressure для низкоприоритетных событий, если лимит достигнут
+
+Code Backbone
+import asyncio
+from asyncio import Semaphore
+from heapq import heappush, heappop
+import random
+
+class PrioritySensorProcessor:
+    def __init__(self, max_workers: int):
+        self.sem = Semaphore(max_workers)
+        self.queue = []
+
+    async def add_event(self, priority: int, event):
+        heappush(self.queue, (priority, event))
+        await self._process_next()
+
+    async def _process_next(self):
+        if not self.queue:
+            return
+        async with self.sem:
+            priority, event = heappop(self.queue)
+            await asyncio.sleep(random.uniform(0.01, 0.05))
+            print(f"Processed event {event} with priority {priority}")
+
+Follow-up:
+
+Метрики: queue length, dropped low-priority events
+
+Dynamic semaphore limits per device
+
+Batch processing of low-priority events

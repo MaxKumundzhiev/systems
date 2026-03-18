@@ -472,3 +472,235 @@ Follow-up:
 Поддержка backpressure
 
 Sliding window статистика + alerting
+
+
+
+🧩 1. Service Isolation with Bulkheads (Amazon style)
+Условие
+
+Сервис обрабатывает несколько типов запросов: payments, search, recommendations.
+
+Нужно гарантировать, что перегрузка одного типа не влияет на другие (Bulkhead pattern).
+
+Требования:
+
+Разделить ресурсы (threads / connection pools) на «отсеки» по типу запроса
+
+Если один сегмент перегружен → запросы в этом сегменте отклоняются или ставятся в очередь
+
+Thread-safe / asyncio-friendly
+
+Code Backbone
+from threading import Lock, Semaphore, Thread
+import time
+
+class BulkheadService:
+    def __init__(self, payment_limit: int, search_limit: int, rec_limit: int):
+        self.payment_sem = Semaphore(payment_limit)
+        self.search_sem = Semaphore(search_limit)
+        self.rec_sem = Semaphore(rec_limit)
+
+    def handle_payment(self, task):
+        with self.payment_sem:
+            self._process(task)
+
+    def handle_search(self, task):
+        with self.search_sem:
+            self._process(task)
+
+    def handle_recommendation(self, task):
+        with self.rec_sem:
+            self._process(task)
+
+    def _process(self, task):
+        """Симуляция обработки запроса"""
+        time.sleep(0.1)
+
+Follow-up:
+
+Асинхронная версия (asyncio.Semaphore)
+
+Добавить metrics/alerting, когда сегмент перегружен
+
+Поддержка dynamic resizing bulkhead
+
+🧩 2. Hedging / Speculative Requests (Google style)
+Условие
+
+Сервис делает внешний API-запрос. Иногда ответы приходят медленно.
+Чтобы уменьшить latency, нужно отправлять hedged request (второй запрос после таймаута).
+
+Требования:
+
+Отправить основной запрос
+
+Если timeout > X мс → отправить второй (hedge) запрос
+
+Вернуть первый успешный ответ
+
+Отменить остальные запросы, когда ответ получен
+
+Code Backbone
+import asyncio
+
+async def fetch_from_service(service_id: int) -> str:
+    """Симуляция внешнего запроса"""
+    await asyncio.sleep(0.1 * service_id)
+    return f"response_from_{service_id}"
+
+async def hedged_request(timeout: float):
+    task1 = asyncio.create_task(fetch_from_service(1))
+    try:
+        return await asyncio.wait_for(task1, timeout)
+    except asyncio.TimeoutError:
+        task2 = asyncio.create_task(fetch_from_service(2))
+        done, pending = await asyncio.wait([task1, task2], return_when=asyncio.FIRST_COMPLETED)
+        for p in pending:
+            p.cancel()
+        return list(done)[0].result()
+
+Follow-up:
+
+Настроить dynamic hedge delay
+
+Поддержка bulkhead + hedge
+
+Метрики: latency p50/p95/p99
+
+🧩 3. Bulkhead + Queue Overflow Handling (Netflix style)
+Условие
+
+Сервис обрабатывает video transcoding jobs.
+Каждый сегмент (HD, 4K, Mobile) имеет отдельный пул рабочих потоков (Bulkhead).
+
+Если пул перегружен → jobs ставятся в очередь до limit
+
+Если очередь заполнена → job отклоняется с ошибкой
+
+Требования:
+
+Thread-safe queue + semaphore
+
+Batch processing (по 5 jobs)
+
+Метрики отказов
+
+Code Backbone
+from threading import Semaphore, Lock, Thread
+from queue import Queue, Full
+import time
+
+class TranscodingBulkhead:
+    def __init__(self, hd_limit: int, hd_queue_size: int):
+        self.hd_sem = Semaphore(hd_limit)
+        self.hd_queue = Queue(maxsize=hd_queue_size)
+        self.lock = Lock()
+
+    def submit_hd_job(self, job):
+        try:
+            self.hd_queue.put_nowait(job)
+        except Full:
+            print("HD queue full! Rejecting job")
+            return
+
+        Thread(target=self._process_hd).start()
+
+    def _process_hd(self):
+        with self.hd_sem:
+            job = self.hd_queue.get()
+            time.sleep(0.1)  # simulate processing
+
+Follow-up:
+
+Асинхронная версия с asyncio.Queue
+
+Dynamic pool resizing
+
+Метрики: average queue length, reject rate
+
+🧩 4. HOL + Retry Strategy (Microsoft style)
+Условие
+
+API иногда возвращает 5xx ошибки. Нужно:
+
+Отправить запрос
+
+Retry с hedge для медленных или ошибочных ответов
+
+Максимум N retries
+
+Требования:
+
+Async-friendly
+
+Backoff strategy (exponential / jitter)
+
+Отмена параллельных задач при успехе
+
+Code Backbone
+import asyncio
+import random
+
+async def unreliable_service():
+    await asyncio.sleep(random.uniform(0.05, 0.2))
+    if random.random() < 0.3:
+        raise Exception("5xx")
+    return "ok"
+
+async def hedged_retry(max_retries: int):
+    for attempt in range(max_retries):
+        task = asyncio.create_task(unreliable_service())
+        try:
+            return await asyncio.wait_for(task, 0.1)
+        except Exception:
+            task.cancel()
+            await asyncio.sleep(0.05 * (2 ** attempt))
+    raise Exception("All retries failed")
+
+Follow-up:
+
+Combine Bulkhead + HOL
+
+Track latency percentiles
+
+Dynamic hedging for slow endpoints
+
+🧩 5. Bulkhead with Multi-tenancy Isolation (Uber style)
+Условие
+
+Много клиентов используют сервис одновременно.
+Нужно изолировать ресурсы по клиентам (bulkhead per tenant), чтобы перегрузка одного клиента не блокировала остальных.
+
+Требования:
+
+Thread-safe / async-safe per tenant
+
+Отклонение запросов, если пул или очередь клиента заполнены
+
+Метрики per-tenant
+
+Code Backbone
+from threading import Semaphore, Lock
+from collections import defaultdict
+import time
+
+class MultiTenantBulkhead:
+    def __init__(self, tenant_limit: int):
+        self.tenant_sems = defaultdict(lambda: Semaphore(tenant_limit))
+        self.lock = Lock()
+
+    def handle_request(self, tenant_id: str, task):
+        sem = self.tenant_sems[tenant_id]
+        with sem:
+            self._process(task)
+
+    def _process(self, task):
+        time.sleep(0.1)
+
+Follow-up:
+
+Asyncio version per tenant
+
+Dynamic tenant limits
+
+Metrics per tenant: queue length, rejects, latency

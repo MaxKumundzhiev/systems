@@ -190,3 +190,285 @@ AsyncIO топики: asyncio.Task.cancel, dict для хранения акти
 
 Нюанс: Обработка asyncio.CancelledError для очистки частично скачанных временных файлов.
 ```
+
+
+
+Concurrent Feature Flag Service
+```text
+Ты разрабатываешь сервис фич-флагов (как LaunchDarkly), который используется тысячами потоков.
+
+Реализуй класс:
+class FeatureStore:
+    ...
+
+Он хранит фичи и их значения:
+"new_ui" → True
+"beta_mode" → False
+
+Требования
+1. Чтение (очень частое)
+def is_enabled(self, key: str) -> bool:
+
+Возвращает значение флага
+Если флаг не существует → KeyError
+Должен поддерживать параллельные чтения
+
+2. Запись (редкая)
+def set_feature(self, key: str, value: bool) -> None:
+
+Устанавливает значение
+Должна быть эксклюзивной
+
+3. Удаление
+def delete_feature(self, key: str) -> None:
+
+Удаляет флаг
+Если нет → KeyError
+
+Конкурентные требования
+Одновременно может быть:
+    много читателей ✅
+    только один писатель ❗
+    Пока идёт запись:
+        чтение запрещено
+    Пока есть читатели:
+        запись ждёт
+    Используй RWLock
+
+❓ Что будет, если читатели идут бесконечно?
+    (writer starvation)
+❓ Как добавить приоритет писателей?
+❓ Как сделать lock-free версию?
+    (copy-on-write / immutable dict)
+❓ Что быстрее:
+    RWLock
+    или просто Lock?
+❓ Как масштабировать на несколько процессов?
+```
+
+🧩 1. High-Throughput Log Ingestion (Google / Netflix style)
+Условие
+
+Сервис принимает миллионы логов в секунду от распределённых клиентов.
+Нужно агрегировать и писать в storage батчами, чтобы минимизировать I/O.
+
+Требования:
+
+Принимать данные через API
+
+Гарантировать order-preserving batching
+
+Flush батчей по таймеру или при достижении размера
+
+Code Backbone
+from collections import deque
+from threading import Lock, Thread
+import time
+
+class LogBatcher:
+    def __init__(self, batch_size: int, flush_interval: float):
+        self.queue = deque()
+        self.batch_size = batch_size
+        self.flush_interval = flush_interval
+        self.lock = Lock()
+
+    def add_log(self, log: str):
+        """Добавляет лог в очередь"""
+        ...
+
+    def _flush(self, logs: list[str]):
+        """Записывает батч в storage"""
+        ...
+
+    def run_flusher(self):
+        """Запуск потока для периодической отправки батчей"""
+        ...
+
+Follow-up:
+
+Сделать потокобезопасным
+
+Добавить backpressure
+
+Асинхронная версия с asyncio
+
+Поддержка C10K / high-throughput
+
+🧩 2. Streaming Analytics (LinkedIn / Kafka style)
+Условие
+
+Поток событий (например, клики пользователей) приходит в реальном времени.
+Нужно скользящее окно по времени (5 минут) для подсчёта уникальных пользователей.
+
+Требования:
+
+Поддерживать real-time подсчёт
+
+Асинхронная обработка
+
+Window slide каждые 10 секунд
+
+Code Backbone
+from collections import deque
+from datetime import datetime, timedelta
+import asyncio
+
+class SlidingWindowCounter:
+    def __init__(self, window_seconds: int):
+        self.window = deque()  # (timestamp, user_id)
+        self.window_seconds = window_seconds
+
+    async def add_event(self, user_id: str):
+        now = datetime.now()
+        self.window.append((now, user_id))
+        await self._evict_old(now)
+
+    async def _evict_old(self, now: datetime):
+        """Удаляем события старше окна"""
+        ...
+
+    def count_unique(self) -> int:
+        """Возвращает количество уникальных пользователей"""
+        ...
+
+Follow-up:
+
+Поддержка миллионы событий/сек
+
+Использовать HyperLogLog для экономии памяти
+
+Асинхронная обработка через asyncio.gather
+
+🧩 3. Batch Email Sender (Amazon style)
+Условие
+
+Сервис собирает email-запросы и отправляет их батчами каждые 1 секунду или когда набирается 100 писем.
+
+Требования:
+
+Thread-safe
+
+Минимизировать количество сетевых запросов
+
+Логирование успеха/ошибок
+
+Code Backbone
+from threading import Lock, Thread
+import time
+
+class EmailBatcher:
+    def __init__(self, batch_size: int, flush_interval: float):
+        self.queue = []
+        self.batch_size = batch_size
+        self.flush_interval = flush_interval
+        self.lock = Lock()
+
+    def add_email(self, email: str):
+        ...
+
+    def _send_batch(self, batch: list[str]):
+        ...
+
+    def run_flusher(self):
+        ...
+
+Follow-up:
+
+Поддержка priority email
+
+Retry failed emails
+
+Распараллеливание отправки для ускорения
+
+🧩 4. Video Stream Chunking (Netflix / YouTube style)
+Условие
+
+Видео поток приходит по сети. Нужно нарезать его на чанки фиксированного размера и отправлять в CDN асинхронно, не блокируя основной поток.
+
+Требования:
+
+Минимизировать задержку
+
+Thread-safe + asyncio-friendly
+
+Поддержка backpressure
+
+Code Backbone
+import asyncio
+from collections import deque
+
+class VideoStreamer:
+    def __init__(self, chunk_size: int):
+        self.chunk_size = chunk_size
+        self.buffer = bytearray()
+        self.queue = deque()
+
+    async def add_data(self, data: bytes):
+        self.buffer.extend(data)
+        while len(self.buffer) >= self.chunk_size:
+            chunk = self.buffer[:self.chunk_size]
+            self.buffer = self.buffer[self.chunk_size:]
+            self.queue.append(chunk)
+            await self._send_chunk(chunk)
+
+    async def _send_chunk(self, chunk: bytes):
+        """Асинхронная отправка чанка"""
+        ...
+
+Follow-up:
+
+Поддержка нескольких пользователей (fan-out)
+
+Adaptive chunking по скорости сети
+
+Поддержка resume / retry
+
+🧩 5. Sensor Data Streaming (Tesla / IoT style)
+Условие
+
+Ты получаешь поток данных с IoT-сенсоров.
+Нужно:
+
+Буферизовать данные по батчам 1000 значений или каждые 0.5 сек
+
+Отправлять в аналитическую систему
+
+Не терять данные при перегрузке
+
+Требования:
+
+Асинхронная обработка
+
+Thread-safe
+
+Sliding window + alerting
+
+Code Backbone
+import asyncio
+from collections import deque
+
+class SensorBatcher:
+    def __init__(self, batch_size: int, flush_interval: float):
+        self.queue = deque()
+        self.batch_size = batch_size
+        self.flush_interval = flush_interval
+
+    async def add_sensor_data(self, data: dict):
+        self.queue.append(data)
+        if len(self.queue) >= self.batch_size:
+            await self._flush()
+
+    async def _flush(self):
+        batch = [self.queue.popleft() for _ in range(min(self.batch_size, len(self.queue)))]
+        await self._send_batch(batch)
+
+    async def _send_batch(self, batch: list[dict]):
+        ...
+
+Follow-up:
+
+Асинхронная обработка
+
+Поддержка backpressure
+
+Sliding window статистика + alerting

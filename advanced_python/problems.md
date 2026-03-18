@@ -914,3 +914,261 @@ Follow-up:
 Dynamic semaphore limits per device
 
 Batch processing of low-priority events
+
+
+```
+🎬 1. Netflix: Thumbnail Generation Pipeline
+🧩 Условие
+
+Ты строишь сервис для Netflix:
+
+Пользователи загружают видео
+
+Нужно сгенерировать thumbnails (превью)
+
+Поток входящих задач может быть в 10x быстрее, чем CPU обработка
+
+💣 Проблема
+read (IO) = 0.05s
+process (CPU) = 0.5s
+
+👉 Producer быстрее в 10 раз → очередь растёт → OOM
+
+✅ Требования
+
+Не допустить OOM
+
+Ограничить:
+
+чтение (IO) → semaphore
+
+очередь → backpressure
+
+Streaming, НЕ batching
+
+🧠 Архитектура
+Connect → read_queue → workers → write_queue → storage
+💻 Code Backbone
+import asyncio
+
+read_queue = asyncio.Queue(maxsize=20)   # backpressure
+write_queue = asyncio.Queue(maxsize=20)
+
+read_sem = asyncio.Semaphore(10)  # limit IO
+
+async def read_task(connect):
+    async with read_sem:
+        data = await asyncio.to_thread(connect.read)
+        await read_queue.put(data)  # backpressure here
+
+async def process_worker():
+    while True:
+        data = await read_queue.get()
+        result = await process(data)
+        await write_queue.put(result)
+
+async def write_worker():
+    while True:
+        result = await write_queue.get()
+        await asyncio.to_thread(save, result)
+🔥 Follow-up
+
+приоритет: HD vs SD thumbnails
+
+adaptive queue size
+
+drop policy (если очередь забита)
+
+📸 2. Instagram: Feed Image Processing
+🧩 Условие
+
+В Instagram пользователи загружают фото:
+
+нужно:
+
+resize
+
+фильтры
+
+compression
+
+💣 Проблема
+10k uploads/sec
+CPU pipeline ограничен
+
+👉 без backpressure:
+
+память забивается
+
+latency растёт
+
+✅ Требования
+
+Ограничить upload ingestion
+
+Ограничить CPU workers
+
+При перегрузке:
+
+замедлять producer
+
+НЕ падать
+
+💻 Code Backbone
+import asyncio
+
+upload_queue = asyncio.Queue(maxsize=50)
+cpu_sem = asyncio.Semaphore(4)  # CPU limit
+
+async def upload_handler(image):
+    await upload_queue.put(image)  # backpressure
+
+async def processor():
+    while True:
+        image = await upload_queue.get()
+        async with cpu_sem:
+            processed = await process_image(image)
+🔥 Follow-up
+
+multi-tenant (influencers vs normal users)
+
+priority queue
+
+rate limiting per user
+
+📺 3. Netflix: Video Chunk Upload (Streaming)
+🧩 Условие
+
+Видео загружается кусками (chunks):
+
+каждый chunk приходит отдельно
+
+нужно:
+
+собрать
+
+сохранить
+
+отправить в CDN
+
+💣 Проблема
+slow storage
+fast upload
+
+👉 очередь chunk'ов растёт → память 💥
+
+✅ Решение
+
+очередь с maxsize → backpressure
+
+semaphore → ограничить запись
+
+💻 Code Backbone
+chunk_queue = asyncio.Queue(maxsize=100)
+write_sem = asyncio.Semaphore(5)
+
+async def upload_chunk(chunk):
+    await chunk_queue.put(chunk)  # backpressure
+
+async def writer():
+    while True:
+        chunk = await chunk_queue.get()
+        async with write_sem:
+            await asyncio.to_thread(write_chunk, chunk)
+🔥 Follow-up
+
+reorder chunks
+
+retry failed chunks
+
+adaptive upload rate
+
+💬 4. Instagram: Real-time Messaging
+🧩 Условие
+
+Чат как в Instagram:
+
+миллионы сообщений
+
+bursts (например, стримы)
+
+💣 Проблема
+producer (messages) >> consumer (DB / push)
+✅ Решение
+
+bounded queue
+
+semaphore на push notifications
+
+drop/slowdown policy
+
+💻 Code Backbone
+msg_queue = asyncio.Queue(maxsize=1000)
+push_sem = asyncio.Semaphore(20)
+
+async def receive_message(msg):
+    await msg_queue.put(msg)  # backpressure
+
+async def push_worker():
+    while True:
+        msg = await msg_queue.get()
+        async with push_sem:
+            await send_push(msg)
+🔥 Follow-up
+
+fan-out (1 → 10k users)
+
+batching push
+
+priority messages
+
+🚗 5. Uber-like: Real-time Location Updates
+🧩 Условие
+
+(аналог Uber)
+
+водители отправляют координаты каждую секунду
+
+нужно:
+
+обрабатывать
+
+обновлять карту
+
+💣 Проблема
+100k drivers → 100k events/sec
+✅ Решение
+
+ограничить ingestion
+
+backpressure на входе
+
+semaphore на CPU обработку
+
+💻 Code Backbone
+location_queue = asyncio.Queue(maxsize=5000)
+process_sem = asyncio.Semaphore(50)
+
+async def ingest(location):
+    await location_queue.put(location)
+
+async def worker():
+    while True:
+        loc = await location_queue.get()
+        async with process_sem:
+            await update_map(loc)
+🔥 Follow-up
+
+drop stale locations
+
+coalescing (берём только последний)
+
+geo-sharding
+
+🧠 Главный инсайт (очень важно)
+Queue (maxsize) → контролирует ПАМЯТЬ (backpressure)
+Semaphore → контролирует ПАРАЛЛЕЛИЗМ (CPU / IO)
+🚀 Если совсем коротко
+Backpressure = "не принимай больше, чем можешь обработать"
+Semaphore = "обрабатывай не больше N одновременно"
+```

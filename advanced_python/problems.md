@@ -1172,3 +1172,49 @@ Semaphore → контролирует ПАРАЛЛЕЛИЗМ (CPU / IO)
 Backpressure = "не принимай больше, чем можешь обработать"
 Semaphore = "обрабатывай не больше N одновременно"
 ```
+
+
+[
+  {
+    "id": 1,
+    "title": "Snowflake: Massive Batch INSERT Overload",
+    "emoji": "❄️",
+    "condition": "ETL pipeline загружает данные в Snowflake:\n- миллионы строк каждые 5 минут\n- multiple tables одновременно\n- burst load из Kafka/S3",
+    "problem": "producer (ETL jobs) >> Snowflake warehouse\n→ warehouse queuing\n→ OOM / timeout",
+    "solution": "- bounded queue для batch buffering\n- semaphore на concurrent INSERTs\n- backpressure policy (drop old / wait)",
+    "code": "insert_queue = asyncio.Queue(maxsize=500)  # batches\nwarehouse_sem = asyncio.Semaphore(10)  # concurrent queries\n\nasync def stage_batch(batch):\n    await insert_queue.put(batch)  # backpressure if full\n\nasync def insert_worker():\n    while True:\n        batch = await insert_queue.get()\n        async with warehouse_sem:\n            await snowflake_insert(batch)",
+    "followup": [
+      "micro-batching (объединять мелкие батчи)",
+      "COPY INTO vs INSERT (bulk load)",
+      "warehouse auto-suspend при idle"
+    ]
+  },
+  {
+    "id": 2,
+    "title": "Snowflake: Query Result Cache Stampede",
+    "emoji": "❄️",
+    "condition": "Dashboard с аналитикой:\n- тысячи пользователей открывают дашборд\n- один и тот же тяжёлый query\n- cache miss → stampede",
+    "problem": "1000 users → 1000 identical queries\n→ warehouse overload\n→ каждый query = 30 sec",
+    "solution": "- semaphore на concurrent queries\n- queue для дедупликации запросов\n- cache-aside pattern (проверка перед выполнением)",
+    "code": "query_cache = {}\nquery_locks = {}\nquery_sem = asyncio.Semaphore(5)  # max concurrent queries\n\nasync def execute_query(sql):\n    if sql in query_cache:\n        return query_cache[sql]\n    \n    if sql not in query_locks:\n        query_locks[sql] = asyncio.Lock()\n    \n    async with query_locks[sql]:\n        if sql in query_cache:  # double-check\n            return query_cache[sql]\n        \n        async with query_sem:\n            result = await snowflake_execute(sql)\n            query_cache[sql] = result\n            return result",
+    "followup": [
+      "materialized views",
+      "query result TTL",
+      "pre-warming cache"
+    ]
+  },
+  {
+    "id": 3,
+    "title": "Snowflake: Time Travel Queries Explosion",
+    "emoji": "❄️",
+    "condition": "Аудит система:\n- users запрашивают historical data (Time Travel)\n- AT(TIMESTAMP => ...) queries\n- сотни запросов одновременно",
+    "problem": "Time Travel queries → scan full table history\n→ огромное потребление credits\n→ warehouse saturation",
+    "solution": "- rate limiting на Time Travel queries\n- semaphore для ограничения параллелизма\n- queue с приоритетами (fresh > historical)",
+    "code": "historical_queue = asyncio.PriorityQueue(maxsize=200)\ntime_travel_sem = asyncio.Semaphore(3)  # expensive queries\n\nasync def request_historical(sql, timestamp, priority=1):\n    await historical_queue.put((priority, sql, timestamp))\n\nasync def time_travel_worker():\n    while True:\n        _, sql, ts = await historical_queue.get()\n        async with time_travel_sem:\n            result = await snowflake_execute(\n                f\"{sql} AT(TIMESTAMP => '{ts}')\"\n            )\n            await process_result(result)",
+    "followup": [
+      "batching historical queries",
+      "клонирование таблиц (CLONE) вместо Time Travel",
+      "retention policy optimization"
+    ]
+  }
+]

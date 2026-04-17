@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: customer_metrics
+    description: >
+      Customer-level aggregated metrics including:
+      - Total orders and revenue
+      - Customer segmentation
+      - Lifetime value indicators
+    
+    columns:
+      - name: customer_id
+        description: "Unique identifier for a customer"
+        tests:
+          - unique
+          - not_null
+      
+      - name: total_spent
+        description: "Total revenue from this customer"
+      
+      - name: customer_segment
+        description: >
+          Customer classification based on order frequency:
+          - No Orders: Never purchased
+          - One-time: Single purchase
+          - Occasional: 2-3 purchases
+          - Frequent: 4+ purchases

@@ -1,3 +1,6 @@
+# Reference
+[The-Complete-Guide-to-Building-Skill-for-Claude](https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf)
+
 # Intro
 Skiils are set of rules, preferences and things which might be handy for agent.
 Instaed of repeatable explanations you might refer to a particular skill.

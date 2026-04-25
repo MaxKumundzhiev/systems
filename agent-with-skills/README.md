@@ -64,7 +64,7 @@ Qualitative metrics:
 – How to assess: Can a new user accomplish the task on first try with minimal guidance?
 ```
 
-`Technical requirements`
+`Skill folder structure`
 ```text
 File structure
 your-skill-name/
@@ -77,4 +77,64 @@ your-skill-name/
     │ └── examples/ # Example
     └── assets/ # Optional - templates, etc.
     └── report-template.md # Example
+```
+
+`SKILL.md file structure`
+```
+This is called !!!frontmatter!!!
+---
+name: your-skill
+description: [...]
+---
+
+# Your Skill Name
+
+# Instructions
+### Step 1: [First Major Step]
+Clear explanation of what happens.
+```
+
+`Writing effective skills`
+The YAML frontmatter: The most important part in SKILL.md, becuase The YAML frontmatter is how Claude decides whether to load your skill
+```
+!!! The description should be formed as: [What it does] + [When to use it] + [Key capabilities] !!!
+---
+name: your-skill-name
+description: What it does. Use when user asks to [specific phrases].
+---
+```
+
+`Examples of good descriptions:`
+```
+# Good - specific and actionable
+description: Analyzes Figma design files and generates
+developer handoff documentation. Use when user uploads .fig
+files, asks for "design specs", "component documentation", or
+"design-to-code handoff".
+
+# Good - includes trigger phrases
+description: Manages Linear project workflows including sprint
+planning, task creation, and status tracking. Use when user
+mentions "sprint", "Linear tasks", "project planning", or asks
+to "create tickets".
+
+# Good - clear value proposition
+description: End-to-end customer onboarding workflow for
+PayFlow. Handles account creation, payment setup, and
+subscription management. Use when user says "onboard new
+customer", "set up subscription", or "create PayFlow account".
+```
+
+`Examples of bad descriptions:`
+```
+# Too vague
+description: Helps with projects.
+
+# Missing triggers
+description: Creates sophisticated multi-page documentation
+systems.
+
+# Too technical, no user triggers
+description: Implements the Project entity model with
+hierarchical relationships.
 ```

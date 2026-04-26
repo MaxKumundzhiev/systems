@@ -1,0 +1,7 @@
+fastapi 
+uvicorn 
+llama-cpp-python 
+python-dotenv
+huggingface_hub
+pydantic-settings
+tenacity

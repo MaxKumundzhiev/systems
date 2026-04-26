@@ -1,3 +1,29 @@
+# Project Structure
+```
+├── app/
+│   ├── __init__.py
+│   ├── main.py          # FastAPI app, lifespan, routes
+│   ├── agent.py         # agent logic (tool calls, loop)
+│   ├── llm.py           # model loading + inference wrapper
+│   └── tools.py         # tool definitions
+├── models/              # downloaded .gguf lives here (gitignored)
+├── .env                 # GGUF path, settings
+├── .gitignore
+├── requirements.txt
+└── README.md
+```
+
+# Kick off
+```bash
+$ docker buildx build --platform linux/arm64 -t sandbox-agent ./app
+
+$ docker run --platform linux/arm64 -p 8000:8000 \
+    -v $(pwd)/app/models:/app/models \
+    --env-file app/.env \
+    sandbox-agent
+```
+
+
 # Reference
 [The-Complete-Guide-to-Building-Skill-for-Claude](https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf)
 

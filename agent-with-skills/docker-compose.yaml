@@ -1,0 +1,14 @@
+services:
+  agent:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    platform: linux/arm64
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app          # live code sync
+      - ./app/models:/app/models  # persist models
+    env_file:
+      - ./app/.env
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload

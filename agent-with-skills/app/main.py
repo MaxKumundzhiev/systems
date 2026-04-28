@@ -1,5 +1,11 @@
 import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    force=True,
+)
+
 from settings import settings
 from prompts.system import SYSTEM_PROMPT
 from llm import LLMLoader, ModelLoadError
